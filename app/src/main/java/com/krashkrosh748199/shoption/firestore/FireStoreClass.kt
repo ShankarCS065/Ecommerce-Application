@@ -12,19 +12,24 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import com.krashkrosh748199.shoption.models.Address
 import com.krashkrosh748199.shoption.models.CartItem
+import com.krashkrosh748199.shoption.models.Order
 import com.krashkrosh748199.shoption.models.Product
+import com.krashkrosh748199.shoption.models.SoldProduct
 import com.krashkrosh748199.shoption.models.User
 import com.krashkrosh748199.shoption.ui.activities.AddEditAddressActivity
 import com.krashkrosh748199.shoption.ui.activities.AddProductActivity
 import com.krashkrosh748199.shoption.ui.activities.AddressListActivity
 import com.krashkrosh748199.shoption.ui.activities.CartListActivity
+import com.krashkrosh748199.shoption.ui.activities.CheckoutActivity
 import com.krashkrosh748199.shoption.ui.activities.LoginActivity
 import com.krashkrosh748199.shoption.ui.activities.ProductDetailsActivity
 import com.krashkrosh748199.shoption.ui.activities.RegisterActivity
 import com.krashkrosh748199.shoption.ui.activities.SettingsActivity
 import com.krashkrosh748199.shoption.ui.activities.UserProfileActivity
 import com.krashkrosh748199.shoption.ui.fragments.DashboardFragment
+import com.krashkrosh748199.shoption.ui.fragments.OrdersFragment
 import com.krashkrosh748199.shoption.ui.fragments.ProductsFragment
+import com.krashkrosh748199.shoption.ui.fragments.SoldProductsFragment
 import com.krashkrosh748199.shoption.utils.Constants
 
 
@@ -445,6 +450,9 @@ class FireStoreClass {
                     is CartListActivity -> {
                         activity.successCartItemsList(list)
                     }
+                    is CheckoutActivity -> {
+                        activity.successCartItemsList(list)
+                    }
                 }
                 // END
             }
@@ -454,13 +462,16 @@ class FireStoreClass {
                     is CartListActivity -> {
                         activity.hideProgressDialog()
                     }
+                    is CheckoutActivity -> {
+                        activity.hideProgressDialog()
+                    }
                 }
 
                 Log.e(activity.javaClass.simpleName, "Error while getting the cart list items.", e)
             }
     }
 
-    fun getAllProductsList(activity: CartListActivity){
+    fun getAllProductsList(activity: Activity){
         mFireStore.collection(Constants.PRODUCTS)
             .get()
             .addOnSuccessListener { document->
@@ -472,10 +483,25 @@ class FireStoreClass {
                     product!!.product_id=i.id
                     productsList.add(product)
                 }
-                activity.successProductsListFromFireStore(productsList)
+                when(activity){
+                    is CartListActivity -> {
+                        activity.successProductsListFromFireStore(productsList)
+                    }
+                    is CheckoutActivity -> {
+                        activity.successProductsListFromFireStore(productsList)
+                    }
+                }
 
             }.addOnFailureListener {e->
-                activity.hideProgressDialog()
+                when(activity){
+                    is CartListActivity -> {
+                        activity.hideProgressDialog()
+                    }
+                    is CheckoutActivity -> {
+                        activity.hideProgressDialog()
+                    }
+                }
+
                 Log.e("Get Product List","Error while getting all product list.",e)
             }
 
@@ -591,6 +617,168 @@ class FireStoreClass {
                 Log.e(activity.javaClass.simpleName, "Error while getting the address list.", e)
             }
 
+    }
+
+    fun updateAllDetails(activity: CheckoutActivity, cartList: ArrayList<CartItem>,order: Order) {
+
+        val writeBatch = mFireStore.batch()
+
+        for (cartItem in cartList) {
+
+            //val productHashMap = HashMap<String, Any>()
+
+           // productHashMap[Constants.STOCK_QUANTITY] =
+             //   (cart.stock_quantity?.toInt()!! - cart.cart_quantity?.toInt()!!).toString()
+
+
+            val soldProduct = SoldProduct(
+                // Here the user id will be of product owner.
+               cartItem.product_owner_id,
+                cartItem.title!!,
+                cartItem.price!!,
+                cartItem.cart_quantity!!,
+                cartItem.image!!,
+                order.title!!,
+                order.order_datetime,
+                order.sub_total_amount!!,
+                order.shipping_charge!!,
+                order.total_amount!!,
+                order.address!!
+            )
+
+            val documentReference = cartItem.product_id?.let {
+                mFireStore.collection(Constants.SOLD_PRODUCTS)
+                    .document(it)
+            }
+
+            writeBatch.set(documentReference!!, soldProduct)
+
+        }
+
+        // Delete the list of cart items
+        for (cart in cartList) {
+
+            val documentReference = cart.id?.let {
+                mFireStore.collection(Constants.CART_ITEMS)
+                    .document(it)
+            }
+
+                writeBatch.delete(documentReference!!)
+        }
+
+        writeBatch.commit().addOnSuccessListener {
+
+            activity.allDetailsUpdatedSuccessfully()
+
+
+        }.addOnFailureListener { e ->
+            // Here call a function of base activity for transferring the result to it.
+            activity.hideProgressDialog()
+
+            Log.e(activity.javaClass.simpleName, "Error while updating all the details after order placed.", e)
+        }
+    }
+
+    fun getMyOrdersList(fragment: OrdersFragment) {
+        mFireStore.collection(Constants.ORDERS)
+            .whereEqualTo(Constants.USER_ID, getCurrentUserID())
+            .get()
+            .addOnSuccessListener { document ->
+                Log.e(fragment.javaClass.simpleName, document.documents.toString())
+                val list: ArrayList<Order> = ArrayList()
+
+                for (i in document.documents) {
+
+                    val orderItem = i.toObject(Order::class.java)!!
+                    orderItem.id = i.id
+
+                    list.add(orderItem)
+                }
+
+                fragment.populateOrdersListInUI(list)
+
+            }
+            .addOnFailureListener { e ->
+
+                fragment.hideProgressDialog()
+
+                Log.e(fragment.javaClass.simpleName, "Error while getting the orders list.", e)
+            }
+    }
+
+    fun placeOrder(activity: CheckoutActivity, order: Order) {
+
+        mFireStore.collection(Constants.ORDERS)
+            .document()
+            // Here the userInfo are Field and the SetOption is set to merge. It is for if we wants to merge
+            .set(order, SetOptions.merge())
+            .addOnSuccessListener {
+
+                activity.orderPlacedSuccess()
+
+            }
+            .addOnFailureListener { e ->
+
+                activity.hideProgressDialog()
+                Log.e(
+                    activity.javaClass.simpleName,
+                    "Error while placing an order.",
+                    e
+                )
+            }
+    }
+
+    fun deleteAddress(activity: AddressListActivity, addressId: String) {
+
+        mFireStore.collection(Constants.ADDRESSES)
+            .document(addressId)
+            .delete()
+            .addOnSuccessListener {
+                activity.deleteAddressSuccess()
+            }
+            .addOnFailureListener { e ->
+                activity.hideProgressDialog()
+                Log.e(
+                    activity.javaClass.simpleName,
+                    "Error while deleting the address.",
+                    e
+                )
+            }
+    }
+
+    fun getSoldProductsList(fragment: SoldProductsFragment) {
+        mFireStore.collection(Constants.SOLD_PRODUCTS)
+            .whereEqualTo(Constants.USER_ID, getCurrentUserID())
+            .get() // Will get the documents snapshots.
+            .addOnSuccessListener { document ->
+                // Here we get the list of sold products in the form of documents.
+                Log.e(fragment.javaClass.simpleName, document.documents.toString())
+
+                // Here we have created a new instance for Sold Products ArrayList.
+                val list: ArrayList<SoldProduct> = ArrayList()
+
+                // A for loop as per the list of documents to convert them into Sold Products ArrayList.
+                for (i in document.documents) {
+
+                    val soldProduct = i.toObject(SoldProduct::class.java)!!
+                    soldProduct.id = i.id
+
+                    list.add(soldProduct)
+                }
+
+                fragment.successSoldProductsList(list)
+
+            }
+            .addOnFailureListener { e ->
+                // Hide the progress dialog if there is any error.
+                fragment.hideProgressDialog()
+
+                Log.e(
+                    fragment.javaClass.simpleName,
+                    "Error while getting the list of sold products.",
+                    e
+                )
+            }
     }
 
 

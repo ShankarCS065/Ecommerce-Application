@@ -1,7 +1,9 @@
 package com.krashkrosh748199.shoption.ui.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -13,6 +15,7 @@ import com.krashkrosh748199.shoption.firestore.FireStoreClass
 import com.krashkrosh748199.shoption.models.CartItem
 import com.krashkrosh748199.shoption.models.Product
 import com.krashkrosh748199.shoption.ui.adapters.CartItemsListAdapter
+import com.krashkrosh748199.shoption.utils.Constants
 
 class CartListActivity : BaseActivity() {
 
@@ -23,6 +26,12 @@ class CartListActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cart_list)
         setupActionBar()
+
+        findViewById<Button>(R.id.btn_checkout).setOnClickListener{
+            val intent = Intent(this@CartListActivity, AddressListActivity::class.java)
+            intent.putExtra(Constants.EXTRA_ADDRESS_DETAILS, true)
+            startActivity(intent)
+        }
     }
     override fun onResume() {
         super.onResume()
@@ -75,7 +84,7 @@ class CartListActivity : BaseActivity() {
             findViewById<RecyclerView>(R.id.rv_cart_items_list).layoutManager = LinearLayoutManager(this@CartListActivity)
             findViewById<RecyclerView>(R.id.rv_cart_items_list).setHasFixedSize(true)
 
-            val cartListAdapter = CartItemsListAdapter(this@CartListActivity, cartList)
+            val cartListAdapter = CartItemsListAdapter(this@CartListActivity, mCartListItems,true)
             findViewById<RecyclerView>(R.id.rv_cart_items_list).adapter = cartListAdapter
 
             var subTotal: Double = 0.0

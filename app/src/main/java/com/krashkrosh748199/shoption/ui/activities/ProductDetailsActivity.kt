@@ -18,6 +18,7 @@ import com.krashkrosh748199.shoption.utils.GlideLoader
 class ProductDetailsActivity : BaseActivity(),View.OnClickListener {
     private var mProductId:String=""
     private lateinit var mProductDetails:Product
+    private  var mProductOwnerId: String = ""
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,12 +29,12 @@ class ProductDetailsActivity : BaseActivity(),View.OnClickListener {
             mProductId=intent.getStringExtra(Constants.EXTRA_PRODUCT_ID)!!
 
         }
-        var productOwnerId:String=""
+        //var productOwnerId:String=""
         if (intent.hasExtra(Constants.EXTRA_PRODUCT_OWNER_ID)){
-            productOwnerId=intent.getStringExtra(Constants.EXTRA_PRODUCT_OWNER_ID)!!
+            mProductOwnerId=intent.getStringExtra(Constants.EXTRA_PRODUCT_OWNER_ID)!!
 
         }
-        if(FireStoreClass().getCurrentUserID()==productOwnerId){
+        if(FireStoreClass().getCurrentUserID()==mProductOwnerId){
             findViewById<Button>(R.id.btn_add_to_cart).visibility=View.GONE
             findViewById<Button>(R.id.btn_go_to_cart).visibility=View.GONE
         }
@@ -116,6 +117,7 @@ class ProductDetailsActivity : BaseActivity(),View.OnClickListener {
 
         val  cartItem = CartItem(
             FireStoreClass().getCurrentUserID(),
+            mProductOwnerId,
             mProductId,
             mProductDetails.title,
             mProductDetails.price,

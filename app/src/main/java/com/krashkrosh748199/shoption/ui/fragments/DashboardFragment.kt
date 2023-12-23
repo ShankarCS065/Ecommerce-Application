@@ -9,6 +9,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.krashkrosh748199.shoption.R
@@ -37,12 +38,14 @@ class DashboardFragment : BaseFragment() {
         return root
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.dashboard_menu,menu)
         super.onCreateOptionsMenu(menu, inflater)
 
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         val id=item.itemId
 
@@ -83,23 +86,12 @@ class DashboardFragment : BaseFragment() {
             recyclerView?.visibility = View.VISIBLE
             noProductsTextView?.visibility = View.GONE
 
-            recyclerView?.layoutManager = LinearLayoutManager(requireContext())
+            recyclerView?.layoutManager = GridLayoutManager(activity,2)
             recyclerView?.setHasFixedSize(true)
 
             val adapterProducts = DashboardItemsListAdapter(requireActivity(), dashboardItemsList)
             recyclerView?.adapter = adapterProducts
 
-         /*  adapterProducts.setOnClickListener(object :
-                DashboardItemsListAdapter.OnClickListener {
-                override fun onClick(position: Int, product: Product) {
-
-                    val intent = Intent(context, ProductDetailsActivity::class.java)
-                    intent.putExtra(Constants.EXTRA_PRODUCT_ID, product.product_id)
-                    intent.putExtra(Constants.EXTRA_PRODUCT_OWNER_ID,product.user_id)
-                    startActivity(intent)
-
-                }
-            })*/
 
         } else {
             recyclerView?.visibility = View.GONE
